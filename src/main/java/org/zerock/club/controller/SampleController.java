@@ -30,6 +30,7 @@ public class SampleController {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @PreAuthorize("permitAll()")
     @GetMapping("/all")
     public void exAll(){
         log.info("exAll..........");

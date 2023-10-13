@@ -6,6 +6,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.zerock.club.repository.ClubMemberRepository;
 import org.zerock.club.security.dto.ClubAuthMemberDTO;
 
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -30,7 +32,6 @@ public class ClubOAuth2UserDetailsService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-
         log.info("--------------------------------------");
         log.info("userRequest:" + userRequest);
 
@@ -47,16 +48,22 @@ public class ClubOAuth2UserDetailsService extends DefaultOAuth2UserService {
         });
 
         String email = null;
+        String name = "";
 
         if(clientName.equals("Google")){
             email = oAuth2User.getAttribute("email");
         }
 
+        if(clientName.equals("Naver")) {
+            Map<String, Object> response = oAuth2User.getAttribute("response");
+            email = (String) response.get("email");
+            name = (String) response.get("name");
+        }
         log.info("EMAIL: " + email);
 //        ClubMember member = saveSocialMember(email); //조금 뒤에 사용
 //
 //        return oAuth2User;
-        ClubMember member = saveSocialMember(email);
+        ClubMember member = saveSocialMember(email, name);
 
         ClubAuthMemberDTO clubAuthMember = new ClubAuthMemberDTO(
                 member.getEmail(),
@@ -75,7 +82,7 @@ public class ClubOAuth2UserDetailsService extends DefaultOAuth2UserService {
     }
 
 
-    private ClubMember saveSocialMember(String email){
+    private ClubMember saveSocialMember(String email, String name){
 
         log.info("----------------------------------->email: {}", email);
         //기존에 동일한 이메일로 가입한 회원이 있는 경우에는 그대로 조회만
@@ -85,10 +92,13 @@ public class ClubOAuth2UserDetailsService extends DefaultOAuth2UserService {
             return result.get();
         }
 
+        if(name.equals("")){
+            name = email;
+        }
 
         //없다면 회원 추가 패스워드는 1111 이름은 그냥 이메일 주소로
         ClubMember clubMember = ClubMember.builder().email(email)
-                .name(email)
+                .name(name)
                 .password( passwordEncoder.encode("1111") )
                 .fromSocial(true)
                 .roleSet(new HashSet<ClubMemberRole>())
